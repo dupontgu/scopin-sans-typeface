@@ -1,0 +1,4 @@
+svgwrite
+numpy
+cairosvg
+potracer
