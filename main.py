@@ -17,24 +17,27 @@ version = "0.1"
 height = 200
 stroke_width = 4.5
 
-def createCharFromSvg(font, char, filename):
+
+def createCharFromSvg(font, char, filename, translation_factor, force_scale=None):
     fontChar = font.createChar(ord(char))
     fontChar.importOutlines(filename)
     box = fontChar.boundingBox()
     original_height = box[3] - box[1]
     original_width = box[2] - box[0]
-    scale = original_width / original_height
+    scale = (original_width / original_height) if force_scale is None else force_scale
+    width = font.em * scale
     if scale > 1:
-        translation_distance = -original_height * scale / 2
-        # scale by factor of 2, translate back into place
-        transformation_matrix = (1, 0, 0, 1, 0, translation_distance)
+        transformation_matrix = (scale, 0, 0, scale, -4, translation_factor)
         fontChar.transform(transformation_matrix)
-        transformation_matrix = (scale, 0, 0, scale, 0, 0)
-        fontChar.transform(transformation_matrix)
-    # -8 to ensure a little overlap with previous
-    fontChar.width = int(font.em * scale) - 8
+    elif force_scale is not None:
+        width = min(original_width, width)
+        print(width)
+    # - 4 to ensure a little overlap with previous
+    fontChar.width = math.ceil(width) - 4
+    return scale
 
 
+# adapted from: https://github.com/tatarize/potrace/pull/8/files
 def path_to_svg(width, height, path, output_file):
     with open(output_file, "w") as fp:
         fp.write(
@@ -90,7 +93,7 @@ def svg_for_code(
     signal = signal + noise
 
     scale = height * (0.95 - noise_amount)
-    pos = (0, scale)
+    pos = (3, -scale)
     samples = len(signal)
     # add some padding at the end to make room for the falling edge
     if end_bit:
@@ -117,11 +120,10 @@ def svg_for_code(
         )
         pos = (x, prev_y - y_delt)
     if end_bit:
-        # falling edge
         dwg.add(
             dwg.line(
                 pos,
-                (prev_x + 2, scale),
+                (prev_x + 2, prev_y),
                 stroke=svgwrite.rgb(0, 0, 0),
                 stroke_width=stroke_width,
             )
@@ -157,6 +159,9 @@ def create_font(weight, samples_per_bit, noise_amount):
     font.familyname = "ScopinSans"
     font.fullname = f"ScopinSans-{weight}"
     font.em = 512
+    max_scale = 0
+    # This is not real math, these values just made it work for now.
+    y_adjustment = -((10 * samples_per_bit) - (360 + (noise_amount * 500)))
 
     for code in range(0, 128):
         print(code)
@@ -168,7 +173,24 @@ def create_font(weight, samples_per_bit, noise_amount):
             start_bit=True,
             end_bit=True,
         )
-        createCharFromSvg(font, chr(code), svg_path)
+
+        current_scale = createCharFromSvg(font, chr(code), svg_path, y_adjustment)
+        if current_scale > max_scale:
+            max_scale = current_scale
+
+    # choose some values to hold variations of "signal high"
+    # handy if you wanna space out words
+    for c in ["¡", "£", "¢"]:
+        svg_path = svg_for_code(
+            number=0b11111111,
+            output_dir=svg_dir,
+            samples_per_bit=samples_per_bit,
+            noise_amount=noise_amount,
+            start_bit=False,
+            end_bit=False,
+        )
+        # use scale value from previously generated characters to make sure they match
+        createCharFromSvg(font, c, svg_path, y_adjustment, force_scale=max_scale)
 
     font_dir = f"{root_output_dir}/ScopinSans"
     Path(font_dir).mkdir(parents=True, exist_ok=True)
@@ -178,4 +200,5 @@ def create_font(weight, samples_per_bit, noise_amount):
 
 
 create_font("NoNoise", samples_per_bit=80, noise_amount=0.0)
-# create_font("FastBaud", samples_per_bit=30 ,noise_amount= 0.04)
+create_font("Regular", samples_per_bit=100, noise_amount=0.04)
+create_font("FastBaud", samples_per_bit=30, noise_amount=0.04)
