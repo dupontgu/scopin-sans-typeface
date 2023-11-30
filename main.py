@@ -11,7 +11,7 @@ root_output_dir = "outputs"
 svg_working_file = f"{root_output_dir}/temp.svg"
 png_working_file = f"{root_output_dir}/temp.png"
 regen_svgs = True
-version = "0.1"
+version = "0.2"
 
 # should probably parameterize these
 height = 200
@@ -31,7 +31,6 @@ def createCharFromSvg(font, char, filename, translation_factor, force_scale=None
         fontChar.transform(transformation_matrix)
     elif force_scale is not None:
         width = min(original_width, width)
-        print(width)
     # - 4 to ensure a little overlap with previous
     fontChar.width = math.ceil(width) - 4
     return scale
@@ -80,15 +79,17 @@ def svg_for_code(
     output_path = f"{output_dir}/{str(number)}.svg"
     if not regen_svgs:
         return output_path
-    binary_number = format(number, "08b")
+    binary_string = format(number, "08b")
+    # LSB first
+    binary_string = binary_string[::-1]
     if start_bit:
-        binary_number = "0" + binary_number
+        binary_string = "0" + binary_string
     if end_bit:
-        binary_number = binary_number + "1"
+        binary_string = binary_string + "1"
     # invert signal
-    binary_signal = np.array([-1 if bool(int(bit)) else 1 for bit in binary_number])
+    binary_signal = np.array([-1 if bool(int(bit)) else 1 for bit in binary_string])
     signal = np.repeat(binary_signal, samples_per_bit)
-    expanded_time = np.linspace(0, len(binary_number), len(signal))
+    expanded_time = np.linspace(0, len(binary_string), len(signal))
     noise = np.random.normal(0, noise_amount, expanded_time.shape)
     signal = signal + noise
 
@@ -158,6 +159,11 @@ def create_font(weight, samples_per_bit, noise_amount):
     font.fontname = f"ScopinSans-{weight}"
     font.familyname = "ScopinSans"
     font.fullname = f"ScopinSans-{weight}"
+    font.copyright = (
+        "Copyright (c) 2023 Guy Dupont (gvy.dvupont@gmail.com), "
+        + "soure code: https://github.com/dupontgu/scopin-sans-typeface, "
+        + "OFL License: https://openfontlicense.org/documents/OFL.txt"
+    )
     font.em = 512
     max_scale = 0
     # This is not real math, these values just made it work for now.
