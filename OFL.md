@@ -1,5 +1,4 @@
-Copyright &#40;c) `2023`, `Guy Dupont` (`gvy.dvupont@gmail.com`),  
-with Reserved Font Name `Scopin' Sans`.
+Copyright &#40;c) `2023`, `Guy Dupont` (`gvy.dvupont@gmail.com`)
 
 This Font Software is licensed under the SIL Open Font License, Version 1.1.
 This license is copied below, and is also available with a FAQ at:
