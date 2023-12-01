@@ -11,7 +11,7 @@ root_output_dir = "outputs"
 svg_working_file = f"{root_output_dir}/temp.svg"
 png_working_file = f"{root_output_dir}/temp.png"
 regen_svgs = True
-version = "0.2"
+version = "0.3"
 
 # should probably parameterize these
 height = 200
@@ -155,10 +155,6 @@ def create_font(weight, samples_per_bit, noise_amount):
     font = fontforge.font()
     font.encoding = "UnicodeFull"
     font.version = version
-    font.weight = weight
-    font.fontname = f"ScopinSans-{weight}"
-    font.familyname = "ScopinSans"
-    font.fullname = f"ScopinSans-{weight}"
     font.copyright = (
         "Copyright (c) 2023 Guy Dupont (gvy.dvupont@gmail.com), "
         + "soure code: https://github.com/dupontgu/scopin-sans-typeface, "
@@ -198,10 +194,26 @@ def create_font(weight, samples_per_bit, noise_amount):
         # use scale value from previously generated characters to make sure they match
         createCharFromSvg(font, c, svg_path, y_adjustment, force_scale=max_scale)
 
-    font_dir = f"{root_output_dir}/ScopinSans"
+    # generate font under the global ScopinSans family, where each variant is a "weight"
+    # this makes for a cleaner install on some machines, but weights are unavailabe in some apps
+    font_dir = f"{root_output_dir}/ScopinSans-{version}"
     Path(font_dir).mkdir(parents=True, exist_ok=True)
-    font.generate(f"{font_dir}/ScopinSans-{weight}.ttf")
-    font.generate(f"{font_dir}/ScopinSans-{weight}.woff2")
+    font.weight = weight
+    filename = f"ScopinSans-{weight}"
+    font.fontname = filename
+    font.familyname = "ScopinSans"
+    font.fullname = filename
+    font.generate(f"{font_dir}/{filename}.ttf")
+    font.generate(f"{font_dir}/{filename}.woff2")
+
+    # alternatively create a unique family for each variant, so each is installed independently
+    individual_dir = f"{root_output_dir}/ScopinSans-Individuals-{version}"
+    Path(individual_dir).mkdir(parents=True, exist_ok=True)
+    filename = f"ScopinSans {weight}"
+    font.familyname = filename
+    font.fullname = filename
+    font.weight = "Regular"
+    font.generate(f"{individual_dir}/{filename}.ttf")
     font.close()
 
 
