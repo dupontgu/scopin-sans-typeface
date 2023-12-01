@@ -11,7 +11,7 @@ root_output_dir = "outputs"
 svg_working_file = f"{root_output_dir}/temp.svg"
 png_working_file = f"{root_output_dir}/temp.png"
 regen_svgs = True
-version = "0.3"
+version = "0.4"
 
 # should probably parameterize these
 height = 200
@@ -26,13 +26,15 @@ def createCharFromSvg(font, char, filename, translation_factor, force_scale=None
     original_width = box[2] - box[0]
     scale = (original_width / original_height) if force_scale is None else force_scale
     width = font.em * scale
-    if scale > 1:
-        transformation_matrix = (scale, 0, 0, scale, -4, translation_factor)
-        fontChar.transform(transformation_matrix)
-    elif force_scale is not None:
+    transformation_matrix = (1, 0, 0, 1, -4, 0)
+    if force_scale is not None:
         width = min(original_width, width)
+        fontChar.transform(transformation_matrix)
+    elif scale > 1:
+        transformation_matrix = (scale, 0, 0, scale, -4, translation_factor)
+    fontChar.transform(transformation_matrix)
     # - 4 to ensure a little overlap with previous
-    fontChar.width = math.ceil(width) - 4
+    fontChar.width = math.ceil(width) - 6
     return scale
 
 
@@ -75,11 +77,13 @@ def svg_for_code(
     noise_amount: float,
     start_bit: bool,
     end_bit: bool,
+    digits: int = 8,
+    start_high: bool = True,
 ):
     output_path = f"{output_dir}/{str(number)}.svg"
     if not regen_svgs:
         return output_path
-    binary_string = format(number, "08b")
+    binary_string = format(number, f"0{digits}b")
     # LSB first
     binary_string = binary_string[::-1]
     if start_bit:
@@ -93,8 +97,8 @@ def svg_for_code(
     noise = np.random.normal(0, noise_amount, expanded_time.shape)
     signal = signal + noise
 
-    scale = height * (0.95 - noise_amount)
-    pos = (3, -scale)
+    scale = height * (0.99 - (noise_amount * 2))
+    pos = (3, -scale if start_high else scale)
     samples = len(signal)
     # add some padding at the end to make room for the falling edge
     if end_bit:
@@ -163,7 +167,7 @@ def create_font(weight, samples_per_bit, noise_amount):
     font.em = 512
     max_scale = 0
     # This is not real math, these values just made it work for now.
-    y_adjustment = -((10 * samples_per_bit) - (360 + (noise_amount * 500)))
+    y_adjustment = -((10 * samples_per_bit) - (387 - (noise_amount * height)))
 
     for code in range(0, 128):
         print(code)
@@ -180,19 +184,60 @@ def create_font(weight, samples_per_bit, noise_amount):
         if current_scale > max_scale:
             max_scale = current_scale
 
-    # choose some values to hold variations of "signal high"
-    # handy if you wanna space out words
-    for c in ["¡", "£", "¢"]:
+    # UTILITY CHARACTERS
+    # for rising edge
+    for c in ["¥"]:
         svg_path = svg_for_code(
-            number=0b11111111,
+            number=0b01,
             output_dir=svg_dir,
             samples_per_bit=samples_per_bit,
             noise_amount=noise_amount,
             start_bit=False,
             end_bit=False,
+            digits=2,
         )
-        # use scale value from previously generated characters to make sure they match
         createCharFromSvg(font, c, svg_path, y_adjustment, force_scale=max_scale)
+
+    # for falling edge
+    for c in ["¦"]:
+        svg_path = svg_for_code(
+            number=0b10,
+            output_dir=svg_dir,
+            samples_per_bit=samples_per_bit,
+            noise_amount=noise_amount,
+            start_bit=False,
+            end_bit=False,
+            digits=2,
+            start_high=False,
+        )
+        createCharFromSvg(font, c, svg_path, y_adjustment, force_scale=max_scale)
+
+    # for high states
+    for c in ["§", "¨", "©", "ª", "«", "¬", "®", "¯"]:
+        svg_path = svg_for_code(
+            number=0b1,
+            output_dir=svg_dir,
+            samples_per_bit=samples_per_bit,
+            noise_amount=noise_amount,
+            start_bit=False,
+            end_bit=False,
+            digits=1,
+        )
+        createCharFromSvg(font, c, svg_path, y_adjustment, force_scale=max_scale)
+
+    # for low states
+    for c in ["°", "±", "²", "³", "´", "¶", "·", "¸"]:
+        svg_path = svg_for_code(
+            number=0b0,
+            output_dir=svg_dir,
+            samples_per_bit=samples_per_bit,
+            noise_amount=noise_amount,
+            start_bit=False,
+            end_bit=False,
+            digits=1,
+            start_high=False,
+        )
+        createCharFromSvg(font, c, svg_path, 0, force_scale=max_scale)
 
     # generate font under the global ScopinSans family, where each variant is a "weight"
     # this makes for a cleaner install on some machines, but weights are unavailabe in some apps

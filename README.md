@@ -18,3 +18,10 @@ There are currently 3 variations:
 7. Two sets of `ttf` files will be generated, choose one set to install from:
    1. The set in `outputs/ScopinSans` are generated such that they are all a part of the same family. Each variation will be installed as a different _weight_. This keeps your system font list a little tidier, but certain applications may not let you choose font weights!
    2. The set in `outputs/ScopinSans-Individuals` are generated such that each variant is a unique font. They will all show up as individual fonts on your system.
+
+## Using the typeface
+Once the .ttf files are installed on your machine, you should be able to use Scopin' Sans like any other typeface.  *Note that only ascii values are generated currently!* There are 1-bit utility characters that can be used to generate arbitrary waveforms:
+- `¥` - falling edge (0b10)
+- `¦` - rising edge (0b01)
+- [`§, ¨, ©, ª, «, ¬, ®, ¯`] - signal high (0b1) (there are multiple so you can randomize the noise)
+- [`°, ±, ², ³, ´, ¶, ·, ¸`] - signal low (0b0) (there are multiple so you can randomize the noise)
